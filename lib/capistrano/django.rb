@@ -4,50 +4,24 @@ namespace :deploy do
 
   desc 'Restart application'
   task :restart do
-    if fetch(:nginx)
-      invoke 'deploy:nginx_restart'
-    else
-      on roles(:web) do |h|
-        execute "sudo apache2ctl graceful"
-      end
-    end
-  end
-
-  task :nginx_restart do
-    on roles(:web) do |h|
-      within release_path do
-        pid_file = "#{releases_path}/gunicorn.pid"
-        if test "[ -e #{pid_file} ]"
-          execute "kill `cat #{pid_file}`"
-        end
-        execute "virtualenv/bin/gunicorn", "#{fetch(:wsgi_file)}:application", '-c=gunicorn_config.py', "--pid=#{pid_file}"
-      end
-    end
+    #it will use systemd (require "capistrano/systemd")    
   end
 
 end
 
 namespace :python do
 
-  def virtualenv_path
-    File.join(
-      fetch(:shared_virtualenv) ? shared_path : release_path, "virtualenv"
-    )
-  end
-
   desc "Create a python virtualenv"
+  Rake::Task["create_virtualenv"].clear_actions   # this prevents the original task from being run
   task :create_virtualenv do
     on roles(:all) do |h|
-      execute "virtualenv #{virtualenv_path}"
+      execute "virtualenv -p python3 #{virtualenv_path}"
       execute "#{virtualenv_path}/bin/pip install -r #{release_path}/#{fetch(:pip_requirements)}"
       if fetch(:shared_virtualenv)
         execute :ln, "-s", virtualenv_path, File.join(release_path, 'virtualenv')
       end
     end
-  end
 
-  desc "Set things up after the virtualenv is ready"
-  task :post_virtualenv do
     if fetch(:npm_tasks)
       invoke 'nodejs:npm'
     end
