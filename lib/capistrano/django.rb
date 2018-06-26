@@ -3,11 +3,18 @@ after 'deploy:updating', 'python:create_virtualenv'
 namespace :deploy do
 
   desc 'Restart application'
-  task :restart do
-    #it will use systemd (require "capistrano/systemd")    
+  task :validate_restart do
+    on roles(:web) do |h|
+      if test("[ -f /etc/systemd/system/sas-gunicorn-#{fetch(:application)}.service ]")
+       invoke 'systemd:restart'
+      else
+       execute :echo, "The Service Does NOT Exist, Please run Puppet to create it for you"
+      end
+    end 
   end
 
-end
+end  
+
 
 namespace :python do
 
@@ -16,6 +23,8 @@ namespace :python do
   task :create_virtualenv do
     on roles(:all) do |h|
       execute "virtualenv -p python3 #{virtualenv_path}"
+      execute "sed -i '3i source #{fetch(:deploy_to)}/.env'  #{release_path}/virtualenv/bin/activate"
+      execute "sed -i '4i export $(cut -d= -f1 #{fetch(:deploy_to)}/.env)'  #{release_path}/virtualenv/bin/activate"
       execute "#{virtualenv_path}/bin/pip install -r #{release_path}/#{fetch(:pip_requirements)}"
       if fetch(:shared_virtualenv)
         execute :ln, "-s", virtualenv_path, File.join(release_path, 'virtualenv')
@@ -52,7 +61,7 @@ namespace :django do
   def django(args, flags="", run_on=:all)
     on roles(run_on) do |h|
       manage_path = File.join(release_path, fetch(:django_project_dir) || '', 'manage.py')
-      execute "#{release_path}/virtualenv/bin/python #{manage_path} #{fetch(:django_settings)} #{args} #{flags}"
+      execute "source #{release_path}/virtualenv/bin/activate && #{release_path}/virtualenv/bin/python #{manage_path} #{fetch(:django_settings)} #{args} #{flags}"
     end
   end
 
