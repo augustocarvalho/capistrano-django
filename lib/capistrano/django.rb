@@ -1,11 +1,38 @@
 after 'deploy:updating', 'python:create_virtualenv'
 
 namespace :deploy do
-
+  
   desc 'Restart application'
-  task :validate_restart do
+  
+  task :restart do
+    if fetch(:nginx)
+      invoke 'deploy:nginx_restart'
+    else
+        on roles(:web) do |h|
+          if fetch(:systemd_unit)
+            invoke 'deploy:systemd_restart'
+          else  
+            execute "sudo apache2ctl graceful"
+          end  
+        end
+    end
+  end
+
+  task :nginx_restart do
     on roles(:web) do |h|
-      if test("[ -f /etc/systemd/system/sas-gunicorn-#{fetch(:application)}.service ]")
+      within release_path do
+        pid_file = "#{releases_path}/gunicorn.pid"
+        if test "[ -e #{pid_file} ]"
+          execute "kill `cat #{pid_file}`"
+        end
+        execute "virtualenv/bin/gunicorn", "#{fetch(:wsgi_file)}:application", '-c=gunicorn_config.py', "--pid=#{pid_file}"
+      end
+    end
+  end
+
+  task :systemd_restart do
+    on roles(:web) do |h|
+      if test("[ -f /etc/systemd/system/#{fetch(:systemd_unit)} ]")
        invoke 'systemd:restart'
       else
        execute :echo, "The Service Does NOT Exist, Please run Puppet to create it for you"
@@ -23,8 +50,10 @@ namespace :python do
   task :create_virtualenv do
     on roles(:all) do |h|
       execute "virtualenv -p python3 #{virtualenv_path}"
-      execute "sed -i '3i source #{fetch(:deploy_to)}/.env'  #{release_path}/virtualenv/bin/activate"
-      execute "sed -i '4i export $(cut -d= -f1 #{fetch(:deploy_to)}/.env)'  #{release_path}/virtualenv/bin/activate"
+      if test("[ -f #{fetch(:deploy_to)}/.env} ]")
+        execute "sed -i '3i source #{fetch(:deploy_to)}/.env'  #{release_path}/virtualenv/bin/activate"
+        execute "sed -i '4i export $(cut -d= -f1 #{fetch(:deploy_to)}/.env)'  #{release_path}/virtualenv/bin/activate"
+      end
       execute "#{virtualenv_path}/bin/pip install -r #{release_path}/#{fetch(:pip_requirements)}"
       if fetch(:shared_virtualenv)
         execute :ln, "-s", virtualenv_path, File.join(release_path, 'virtualenv')
