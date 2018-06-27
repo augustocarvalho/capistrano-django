@@ -10,7 +10,11 @@ namespace :deploy do
     else
         on roles(:web) do |h|
           if fetch(:systemd_unit)
-            invoke 'deploy:systemd_restart'
+            if test("[ -f /etc/systemd/system/sas-gunicorn-#{fetch(:application)}.service ]")
+             invoke 'systemd:restart'
+            else
+             execute :echo, "The systemd_unit Does NOT Exist, Please run Puppet to create it for you"
+            end
           else  
             execute "sudo apache2ctl graceful"
           end  
@@ -45,21 +49,37 @@ end
 
 namespace :python do
 
+  def virtualenv_path
+    File.join(
+      fetch(:shared_virtualenv) ? shared_path : release_path, "virtualenv"
+    )
+  end
+
   desc "Create a python virtualenv"
-  Rake::Task["create_virtualenv"].clear_actions   # this prevents the original task from being run
+  #Rake::Task["create_virtualenv"].clear_actions   # this prevents the original task from being run
   task :create_virtualenv do
     on roles(:all) do |h|
       execute "virtualenv -p python3 #{virtualenv_path}"
-      if test("[ -f #{fetch(:deploy_to)}/.env} ]")
-        execute "sed -i '3i source #{fetch(:deploy_to)}/.env'  #{release_path}/virtualenv/bin/activate"
-        execute "sed -i '4i export $(cut -d= -f1 #{fetch(:deploy_to)}/.env)'  #{release_path}/virtualenv/bin/activate"
-      end
+      execute "sed -i '3i source #{fetch(:deploy_to)}/.env'  #{release_path}/virtualenv/bin/activate"
+      execute "sed -i '4i export $(cut -d= -f1 #{fetch(:deploy_to)}/.env)'  #{release_path}/virtualenv/bin/activate"
       execute "#{virtualenv_path}/bin/pip install -r #{release_path}/#{fetch(:pip_requirements)}"
       if fetch(:shared_virtualenv)
         execute :ln, "-s", virtualenv_path, File.join(release_path, 'virtualenv')
       end
     end
 
+    if fetch(:npm_tasks)
+      invoke 'nodejs:npm'
+    end
+    if fetch(:flask)
+      invoke 'flask:setup'
+    else
+      invoke 'django:setup'
+    end
+  end
+
+  desc "Set things up after the virtualenv is ready"
+  task :post_virtualenv do
     if fetch(:npm_tasks)
       invoke 'nodejs:npm'
     end
