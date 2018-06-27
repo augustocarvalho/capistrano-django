@@ -10,11 +10,7 @@ namespace :deploy do
     else
         on roles(:web) do |h|
           if fetch(:systemd_unit)
-            if test("[ -f /etc/systemd/system/sas-gunicorn-#{fetch(:application)}.service ]")
-             invoke 'systemd:restart'
-            else
-             execute :echo, "The systemd_unit Does NOT Exist, Please run Puppet to create it for you"
-            end
+             invoke 'deploy:validate_restart'
           else  
             execute "sudo apache2ctl graceful"
           end  
@@ -34,7 +30,7 @@ namespace :deploy do
     end
   end
 
-  task :systemd_restart do
+  task :validate_restart do
     on roles(:web) do |h|
       if test("[ -f /etc/systemd/system/#{fetch(:systemd_unit)} ]")
        invoke 'systemd:restart'
