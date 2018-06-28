@@ -8,13 +8,13 @@ namespace :deploy do
     if fetch(:nginx)
       invoke 'deploy:nginx_restart'
     else
-        on roles(:web) do |h|
-          if fetch(:systemd_unit)
-             invoke 'deploy:validate_restart'
-          else  
-            execute "sudo apache2ctl graceful"
-          end  
-        end
+       on roles(:web) do |h|
+         if fetch(:systemd_unit)
+           invoke 'systemd:restart'
+         else
+           execute "sudo apache2ctl graceful"
+         end
+       end
     end
   end
 
@@ -30,15 +30,6 @@ namespace :deploy do
     end
   end
 
-  task :validate_restart do
-    on roles(:web) do |h|
-      if test("[ -f /etc/systemd/system/#{fetch(:systemd_unit)} ]")
-       invoke 'systemd:restart'
-      else
-       execute :echo, "The Service Does NOT Exist, Please run Puppet to create it for you"
-      end
-    end 
-  end
 
 end  
 
