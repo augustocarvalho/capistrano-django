@@ -10,7 +10,9 @@ namespace :deploy do
     else
        on roles(:web) do |h|
          if fetch(:systemd_unit)
-           invoke 'systemd:restart'
+           #invoke 'systemd:restart'
+           execute "sudo systemctl stop sas-gunicorn-smart_thor_apps.socket"
+           execute "sudo systemctl start sas-gunicorn-smart_thor_apps"
          else
            execute "sudo apache2ctl graceful"
          end
