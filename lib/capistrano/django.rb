@@ -1,23 +1,25 @@
 after 'deploy:updating', 'python:create_virtualenv'
 
 namespace :deploy do
-  
-  desc 'Restart application'
-  
-  task :restart do
-    if fetch(:nginx)
-      invoke 'deploy:nginx_restart'
-    else
-       on roles(:web) do |h|
-         if fetch(:systemd_unit)
-           #invoke 'systemd:restart'
-           execute "sudo systemctl stop sas-gunicorn-smart_thor_apps.socket"
-           execute "sudo systemctl start sas-gunicorn-smart_thor_apps"
-         else
-           execute "sudo apache2ctl graceful"
+
+  %w[start stop restart status].each do |command|
+   desc 'Restart application'
+   task command do
+     on roles(:web) do
+       if fetch(:nginx)
+          invoke 'deploy:nginx_restart'
+       else
+         on roles(:web) do |h|
+           if fetch(:systemd_unit)
+             execute "sudo systemctl #{command} sas-gunicorn-#{fetch(:application)}.socket"
+             execute "sudo systemctl #{command} sas-gunicorn-#{fetch(:application)}"
+           else
+             execute "sudo apache2ctl graceful"
+           end
          end
        end
-    end
+     end
+   end
   end
 
   task :nginx_restart do
