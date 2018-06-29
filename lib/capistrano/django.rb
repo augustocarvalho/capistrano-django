@@ -11,8 +11,8 @@ namespace :deploy do
        else
          on roles(:web) do |h|
            if fetch(:systemd_unit)
-             execute "sudo systemctl #{command} sas-gunicorn-#{fetch(:application)}.socket"
-             execute "sudo systemctl #{command} sas-gunicorn-#{fetch(:application)}"
+             execute "sudo systemctl #{command} #{fetch(:systemd_unit)}.socket"
+             execute "sudo systemctl #{command} #{fetch(:systemd_unit)}"
            else
              execute "sudo apache2ctl graceful"
            end
