@@ -1,16 +1,17 @@
 Gem::Specification.new do |s|
 
-  s.name     = "capistrano-django"
+  s.name     = "capistrano-django-systemd"
   s.version  = "3.5.6"
 
-  s.homepage = "http://github.com/mattjmorrison/capistrano-django"
-  s.summary  = %q{capistrano-django - Welcome to easy deployment with Ruby over SSH for Django}
-  s.description = %q{capistrano-django provides a solid basis for common django deployment}
+  s.homepage = "https://github.com/augustocarvalho/capistrano-django"
+  s.summary  = %q{capistrano-django-systemd - Welcome to easy deployment with Ruby over SSH for Django/Python using Gunicorn}
+  s.description = %q{capistrano-django-systemd provides a solid basis for common django deployment}
 
   s.files    = Dir["lib/**/*.rb"]
   s.add_dependency "capistrano", "~> 3"
 
-  s.author   = "Matthew J. Morrison"
-  s.email    = "mattjmorrison@mattjmorrison.com"
+  s.author   = "Matthew J. Morrison & adapted by Augusto Carvalho"
+  s.email    = "augusto.unit@gmail.com"
+
 
 end
